@@ -25,6 +25,13 @@ my $arcconf_cmd = "/usr/Arcconf/arcconf GETCONFIG 1";
 ###############################################################################
 ###############################################################################
 
+use constant {
+	NAGIOS_OK       => 1,
+	NAGIOS_WARNING  => 2,
+	NAGIOS_CRITICAL => 3,
+	NAGIOS_UNKNOWN  => 4,
+};
+
 my $verbose      = 0;
 my $include_phys = 0;
 my $dry;
@@ -39,7 +46,7 @@ GetOptions(
 my $x = parse_arcconf();
 
 my @out;
-my $exit = 0;
+my $exit = NAGIOS_OK;
 
 ####################################################
 # General Controller Check
@@ -50,7 +57,7 @@ if ($controller_ok) {
 	push(@out, "Controller: OK");
 } else {
 	push(@out, "Controller: " . $x->{controller}->{status});
-	$exit = 2;
+	$exit = NAGIOS_CRITICAL;
 }
 
 ####################################################
@@ -66,7 +73,7 @@ foreach my $x (@lds) {
 		push(@out, "Logical Disk '$name': OK");
 	} else {
 		push(@out, "Logical Disk '$name': " . $x->{status});
-		$exit = 2;
+		$exit = NAGIOS_CRITICAL;
 	}
 }
 
@@ -95,7 +102,7 @@ if ($include_phys && $x->{physical}) {
 	if ($total_errors) {
 		my $good_drives = $total - $total_errors;
 		push(@out, "Physical disks: $total_errors drives with errors $good_drives drives OK");
-		$exit = 2;
+		$exit = NAGIOS_CRITICAL;
 	} else {
 		push(@out, "Physical disks: $total OK");
 	}
@@ -119,30 +126,30 @@ sub parse_arcconf {
 	if ($dry) {
 		if (!-r $dry) {
 			print "$dry is not readable\n";
-			exit(1);
+			exit(NAGIOS_WARNING);
 		}
 
 		$str = file_get_contents($dry);
 
 		if (!$str) {
 			print "Unable to load $dry\n";
-			exit(1);
+			exit(NAGIOS_WARNING);
 		}
 	# Read the full config from arcconf
 	} else {
 		no warnings "exec";
 
-		$str  = `$arcconf_cmd`;
-		$exit = $?;
+		$str      = `$arcconf_cmd`;
+		my $lexit = $?;
 
-		if ($exit != 0) {
+		if ($lexit != 0) {
 			print "Error running arcconf: '$arcconf_cmd'\n";
-			exit(2);
+			exit(NAGIOS_CRITICAL);
 		}
 
 		if (!trim($str)) {
 			print "No output from arcconf?\n";
-			exit(2);
+			exit(NAGIOS_CRITICAL);
 		}
 	}
 
@@ -156,7 +163,7 @@ sub parse_arcconf {
 	# 3: Physical device config
 	if (scalar(@p) < 4) {
 		print "Unable to parse arcconf output. Not enough sections\n";
-		exit(2);
+		exit(NAGIOS_CRITICAL);
 	}
 
 	my $ret            = {};
@@ -275,7 +282,7 @@ sub process_physical_section {
 
 sub usage {
 	print "Usage: $0 [--physical]\n";
-	exit;
+	exit(NAGIOS_OK);
 }
 
 #####################################################
