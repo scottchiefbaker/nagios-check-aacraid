@@ -45,12 +45,14 @@ GetOptions(
 
 my $x = parse_arcconf();
 
-my @out;
+# We start out OK, and change if we find an error
 my $exit = NAGIOS_OK;
 
 ####################################################
 # General Controller Check
 ####################################################
+
+my @out;
 
 my $controller_ok = $x->{controller}->{temp_str} eq "Normal" && $x->{controller}->{status} eq "Optimal";
 if ($controller_ok) {
