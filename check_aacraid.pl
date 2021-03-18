@@ -15,22 +15,30 @@ use warnings;
 use v5.16;
 use Getopt::Long;
 
-my $arcconf_cmd = "/usr/Arcconf/arcconf GETCONFIG 1";
-
 # For sudo access you need to put the following in your sudo config
 # nagios ALL=(root) NOPASSWD: /usr/Arcconf/arcconf GETCONFIG 1 *
-#
-#my $arcconf_cmd = "sudo /usr/Arcconf/arcconf GETCONFIG 1";
+
+my $arcconf_cmd;
+if (!is_root()) {
+	$arcconf_cmd = "sudo /usr/Arcconf/arcconf GETCONFIG 1";
+} else {
+	$arcconf_cmd = "/usr/Arcconf/arcconf GETCONFIG 1";
+}
 
 ###############################################################################
 ###############################################################################
 
 use constant {
-	NAGIOS_OK       => 1,
-	NAGIOS_WARNING  => 2,
-	NAGIOS_CRITICAL => 3,
-	NAGIOS_UNKNOWN  => 4,
+	NAGIOS_OK       => 0,
+	NAGIOS_WARNING  => 1,
+	NAGIOS_CRITICAL => 2,
+	NAGIOS_UNKNOWN  => 3,
 };
+
+if (is_running("arcconf")) {
+	print "arcconf is already running. Refusing to run again";
+	exit(NAGIOS_UNKNOWN);
+}
 
 my $verbose      = 0;
 my $include_phys = 0;
@@ -318,6 +326,23 @@ sub file_put_contents {
 	return length($data);
 }
 
+sub is_root {
+	my ($name, $passwd, $uid, $gid, $quota, $comment, $gcos, $dir, $shell) = getpwuid(0);
+
+	my $ret = ($uid == 0);
+
+	return $ret;
+}
+
+sub is_running {
+	my $prog = shift();
+
+	my $out = `pgrep $prog`;
+	my @ret = split(' ', $out);
+
+	return @ret;
+}
+
 # Debug print variable using either Data::Dump::Color (preferred) or Data::Dumper
 # Creates methods k() and kd() to print, and print & die respectively
 BEGIN {
@@ -337,4 +362,3 @@ BEGIN {
 }
 
 # vim: tabstop=4 shiftwidth=4 autoindent softtabstop=4
-
