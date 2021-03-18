@@ -14,9 +14,10 @@ use strict;
 use warnings;
 use v5.16;
 use Getopt::Long;
+use English;
 
 # For sudo access you need to put the following in your sudo config
-# nagios ALL=(root) NOPASSWD: /usr/Arcconf/arcconf GETCONFIG 1 *
+# nagios ALL=(root) NOPASSWD: /usr/Arcconf/arcconf GETCONFIG 1
 
 my $arcconf_cmd;
 if (!is_root()) {
@@ -327,9 +328,8 @@ sub file_put_contents {
 }
 
 sub is_root {
-	my ($name, $passwd, $uid, $gid, $quota, $comment, $gcos, $dir, $shell) = getpwuid(0);
-
-	my $ret = ($uid == 0);
+	# Fromt: https://perldoc.pl/variables/$%3E
+	my $ret = ($EFFECTIVE_USER_ID == 0);
 
 	return $ret;
 }
